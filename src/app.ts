@@ -1,0 +1,104 @@
+import 'dotenv/config';
+import Fastify, { type FastifyInstance } from 'fastify';
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { tenantsRoutes } from './modules/tenants/tenants.routes.js';
+import { usersRoutes } from './modules/users/users.routes.js';
+import { whatsappRoutes } from './modules/whatsapp/whatsapp.routes.js';
+import { flowsRoutes } from './modules/flows/flows.routes.js';
+import { messagesRoutes } from './modules/messages/messages.routes.js';
+import { contactsRoutes } from './modules/contacts/contacts.routes.js';
+import { webhooksRoutes } from './modules/webhooks/webhooks.routes.js';
+import { registerSecurityPlugins } from './shared/plugins/security.js';
+import { registerSwagger } from './shared/plugins/swagger.js';
+import { prismaPlugin } from './shared/plugins/prisma.js';
+import { redisPlugin } from './shared/plugins/redis.js';
+import { authPlugin } from './shared/plugins/auth.js';
+import { createQueueManager } from './shared/queue/salesQueue.js';
+
+type BuildAppOptions = {
+  logger?: boolean;
+  enableQueue?: boolean;
+};
+
+export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
+  const app = Fastify({
+    logger: options.logger ?? true,
+  });
+
+  await app.register(prismaPlugin);
+  await app.register(redisPlugin);
+  await app.register(authPlugin);
+
+  await registerSecurityPlugins(app);
+  await registerSwagger(app);
+
+  app.decorate('queueManager', null);
+
+  if (options.enableQueue ?? true) {
+    app.queueManager = await createQueueManager();
+  }
+
+  app.get('/health', async () => ({
+    status: 'ok',
+    queue: app.queueManager ? 'enabled' : 'disabled',
+    timestamp: new Date().toISOString(),
+  }));
+
+  app.post('/queues/sales/test', async (request, reply) => {
+    if (!app.queueManager) {
+      return reply.status(503).send({ error: 'Queue disabled' });
+    }
+
+    const body = request.body as Partial<{
+      tenantId: string;
+      contactPhone: string;
+      message: string;
+    }>;
+
+    if (!body.tenantId || !body.contactPhone || !body.message) {
+      return reply.status(400).send({
+        error: 'tenantId, contactPhone and message are required',
+      });
+    }
+
+    const jobId = await app.queueManager.enqueueSalesMessage({
+      tenantId: body.tenantId,
+      contactPhone: body.contactPhone,
+      message: body.message,
+    });
+
+    return reply.status(202).send({ jobId });
+  });
+
+  app.get('/queues/sales/:jobId', async (request, reply) => {
+    if (!app.queueManager) {
+      return reply.status(503).send({ error: 'Queue disabled' });
+    }
+
+    const { jobId } = request.params as { jobId: string };
+    const result = await app.queueManager.getJobStatus(jobId);
+
+    if (result.status === 'not_found') {
+      return reply.status(404).send({ error: 'Job not found' });
+    }
+
+    return reply.send(result);
+  });
+
+  await authRoutes(app);
+  await tenantsRoutes(app);
+  await usersRoutes(app);
+  await whatsappRoutes(app);
+  await flowsRoutes(app);
+  await messagesRoutes(app);
+  await contactsRoutes(app);
+  await webhooksRoutes(app);
+
+  app.addHook('onClose', async () => {
+    if (app.queueManager) {
+      await app.queueManager.close();
+    }
+  });
+
+  return app;
+}

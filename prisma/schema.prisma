@@ -1,0 +1,371 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Plan {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+}
+
+enum WhatsAppStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  BANNED
+  ERROR
+}
+
+enum TriggerType {
+  ANY_MESSAGE
+  KEYWORD
+  FIRST_MESSAGE
+}
+
+enum StepType {
+  SEND_MESSAGE
+  CAPTURE_INPUT
+  CONDITIONAL
+  END
+  TRANSFER_HUMAN
+}
+
+enum ConditionOperator {
+  EQUALS
+  CONTAINS
+  STARTS_WITH
+  REGEX_MATCH
+  IS_NUMBER
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  VIDEO
+  DOCUMENT
+  BUTTON_LIST
+  LIST
+  LOCATION
+}
+
+enum ConversationStatus {
+  ACTIVE
+  WAITING_INPUT
+  TRANSFERRED
+  FINISHED
+  EXPIRED
+}
+
+enum Direction {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum WebhookEvent {
+  MESSAGE_RECEIVED
+  MESSAGE_SENT
+  CONVERSATION_STARTED
+  CONVERSATION_FINISHED
+  CONTACT_CREATED
+  FLOW_COMPLETED
+  WA_CONNECTED
+  WA_DISCONNECTED
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  email     String   @unique
+  phone     String?
+  logoUrl   String?
+  isActive  Boolean  @default(true)
+  plan      Plan     @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users           User[]
+  whatsappSession WhatsAppSession?
+  flows           Flow[]
+  messageTemplates MessageTemplate[]
+  contacts        Contact[]
+  conversations   Conversation[]
+  webhooks        Webhook[]
+  apiKeys         ApiKey[]
+
+  @@map("tenants")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  tenantId     String?
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(ADMIN)
+  avatarUrl    String?
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant        Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model WhatsAppSession {
+  id                 String         @id @default(cuid())
+  tenantId           String         @unique
+  phoneNumber        String?
+  status             WhatsAppStatus @default(DISCONNECTED)
+  qrCode             String?
+  qrExpiresAt        DateTime?
+  lastConnectedAt    DateTime?
+  lastDisconnectedAt DateTime?
+  deviceInfo         Json?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_sessions")
+}
+
+model Flow {
+  id           String      @id @default(cuid())
+  tenantId     String
+  name         String
+  description  String?
+  isActive     Boolean     @default(false)
+  triggerType  TriggerType @default(ANY_MESSAGE)
+  triggerValue String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  steps  FlowStep[]
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("flows")
+}
+
+model FlowStep {
+  id              String          @id @default(cuid())
+  flowId          String
+  templateId      String?
+  order           Int
+  type            StepType        @default(SEND_MESSAGE)
+  inputVariable   String?
+  validationRegex String?
+  invalidMessage  String?
+  waitForInput    Boolean         @default(false)
+  nextStepId      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  flow       Flow             @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  template   MessageTemplate? @relation(fields: [templateId], references: [id])
+  conditions StepCondition[]
+
+  @@index([flowId])
+  @@index([flowId, order])
+  @@map("flow_steps")
+}
+
+model MessageTemplate {
+  id        String      @id @default(cuid())
+  tenantId  String
+  name      String
+  content   String
+  type      MessageType @default(TEXT)
+  mediaUrl  String?
+  caption   String?
+  buttons   Json?
+  listTitle String?
+  listItems Json?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  flowSteps FlowStep[]
+
+  @@index([tenantId])
+  @@map("message_templates")
+}
+
+model Contact {
+  id          String    @id @default(cuid())
+  tenantId    String
+  phone       String
+  name        String?
+  email       String?
+  variables   Json?
+  isBlocked   Boolean   @default(false)
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@index([phone])
+  @@map("contacts")
+}
+
+model Conversation {
+  id            String             @id @default(cuid())
+  tenantId      String
+  contactId     String
+  flowId        String?
+  currentStepId String?
+  status        ConversationStatus @default(ACTIVE)
+  startedAt     DateTime           @default(now())
+  endedAt       DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  tenant   Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact  Contact               @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages ConversationMessage[]
+
+  @@index([tenantId])
+  @@index([contactId])
+  @@index([tenantId, status])
+  @@map("conversations")
+}
+
+model ConversationMessage {
+  id             String        @id @default(cuid())
+  conversationId String
+  direction      Direction
+  type           MessageType   @default(TEXT)
+  content        String?
+  mediaUrl       String?
+  waMessageId    String?
+  status         MessageStatus @default(SENT)
+  errorMessage   String?
+  createdAt      DateTime      @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([waMessageId])
+  @@map("conversation_messages")
+}
+
+model Webhook {
+  id           String         @id @default(cuid())
+  tenantId     String
+  name         String
+  url          String
+  secret       String?
+  events       WebhookEvent[]
+  isActive     Boolean        @default(true)
+  lastCalledAt DateTime?
+  failCount    Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@index([tenantId])
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id           String       @id @default(cuid())
+  webhookId    String
+  event        WebhookEvent
+  payload      Json
+  statusCode   Int?
+  responseBody String?
+  attempt      Int          @default(1)
+  success      Boolean      @default(false)
+  duration     Int?
+  createdAt    DateTime     @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([webhookId, success])
+  @@map("webhook_deliveries")
+}
+
+model ApiKey {
+  id         String   @id @default(cuid())
+  tenantId   String
+  name       String
+  keyHash    String   @unique
+  prefix     String
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+model StepCondition {
+  id         String            @id @default(cuid())
+  stepId     String
+  operator   ConditionOperator
+  value      String
+  nextStepId String
+  order      Int               @default(0)
+  createdAt  DateTime          @default(now())
+
+  step FlowStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@index([stepId])
+  @@map("step_conditions")
+}
