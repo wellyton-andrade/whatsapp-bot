@@ -30,7 +30,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "prepare": "husky"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -40,6 +41,7 @@
     "@types/node": "^25.5.0",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
     "prettier": "^3.8.1",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",

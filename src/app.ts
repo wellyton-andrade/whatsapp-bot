@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { ZodError } from 'zod';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { tenantsRoutes } from './modules/tenants/tenants.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
@@ -14,6 +15,9 @@ import { prismaPlugin } from './shared/plugins/prisma.js';
 import { redisPlugin } from './shared/plugins/redis.js';
 import { authPlugin } from './shared/plugins/auth.js';
 import { createQueueManager } from './shared/queue/salesQueue.js';
+import { AppError } from './shared/errors/appError.js';
+import { processInboundMessage } from './modules/whatsapp/inbound.processor.js';
+import { processWebhookDelivery } from './modules/webhooks/webhook-delivery.processor.js';
 
 type BuildAppOptions = {
   logger?: boolean;
@@ -29,13 +33,38 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(redisPlugin);
   await app.register(authPlugin);
 
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof AppError) {
+      return reply.status(error.statusCode).send({ error: error.message });
+    }
+
+    if (error instanceof ZodError) {
+      return reply.status(422).send({
+        error: 'Validation error',
+        details: error.issues,
+      });
+    }
+
+    if (typeof (error as { statusCode?: number }).statusCode === 'number') {
+      const statusCode = (error as { statusCode: number }).statusCode;
+      const message = error instanceof Error ? error.message : 'Request error';
+      return reply.status(statusCode).send({ error: message });
+    }
+
+    app.log.error(error);
+    return reply.status(500).send({ error: 'Internal server error' });
+  });
+
   await registerSecurityPlugins(app);
   await registerSwagger(app);
 
   app.decorate('queueManager', null);
 
   if (options.enableQueue ?? true) {
-    app.queueManager = await createQueueManager();
+    app.queueManager = await createQueueManager({
+      onInboundMessage: async (payload) => processInboundMessage(app, payload),
+      onWebhookDelivery: async (payload) => processWebhookDelivery(app, payload),
+    });
   }
 
   app.get('/health', async () => ({
