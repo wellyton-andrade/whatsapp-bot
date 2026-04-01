@@ -14,6 +14,8 @@ export async function registerSecurityPlugins(app: FastifyInstance): Promise<voi
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
   });
 
+  // Rate limiting: 100 requests per minute
+  // Prevents brute force attacks, DDoS, and abuse
   await app.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',

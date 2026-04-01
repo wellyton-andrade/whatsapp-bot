@@ -55,7 +55,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   const app = Fastify({
     logger: loggerConfig,
-    disableRequestLogging: true,
+    // Centralized logging: use native Fastify logger
+    // - disableRequestLogging is false (default), so Fastify handles req/res lifecycle logs
+    // - Custom hooks only add structured context when needed (requestId correlation)
     requestIdHeader: 'x-request-id',
     requestIdLogLabel: 'requestId',
     genReqId: (request) => {
@@ -73,29 +75,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     },
   });
 
-  app.addHook('onRequest', async (request) => {
-    request.log.info(
-      {
-        requestId: request.id,
-        method: request.method,
-        path: request.url,
-      },
-      'request received',
-    );
-  });
-
-  app.addHook('onResponse', async (request, reply) => {
-    request.log.info(
-      {
-        requestId: request.id,
-        method: request.method,
-        path: request.url,
-        statusCode: reply.statusCode,
-        responseTimeMs: reply.elapsedTime,
-      },
-      'request completed',
-    );
-  });
+  // Removed custom onRequest/onResponse hooks - using native Fastify logging
+  // Fastify automatically logs request completion with timing and status code
+  // This provides consistent, structured logging without duplication
 
   await app.register(prismaPlugin);
   await app.register(redisPlugin);
@@ -249,7 +231,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   // Graceful shutdown: close all resources in correct order
   app.addHook('onClose', async () => {
-    // 1. Close queue first (allows in-flight jobs to complete)
+    // 0. Close WhatsApp sessions first (prevents memory leaks from singletons)
+    if (app.whatsappService) {
+      app.log.info('closing whatsapp sessions...');
+      await WhatsAppService.closeSessions();
+    }
+
+    // 1. Close queue (allows in-flight jobs to complete)
     if (app.queueManager) {
       app.log.info('closing queue manager...');
       await app.queueManager.close();
