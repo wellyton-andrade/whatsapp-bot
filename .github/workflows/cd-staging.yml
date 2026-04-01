@@ -14,25 +14,43 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
     environment:
       name: staging
 
     steps:
+      - name: Validate staging secrets
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_PATH: ${{ secrets.STAGING_PATH }}
+        run: |
+          set -e
+          test -n "$STAGING_HOST" || (echo "Missing secret: STAGING_HOST" && exit 1)
+          test -n "$STAGING_USER" || (echo "Missing secret: STAGING_USER" && exit 1)
+          test -n "$STAGING_SSH_KEY" || (echo "Missing secret: STAGING_SSH_KEY" && exit 1)
+          test -n "$STAGING_PATH" || (echo "Missing secret: STAGING_PATH" && exit 1)
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          port: ${{ secrets.STAGING_PORT }}
+          port: ${{ secrets.STAGING_PORT || '22' }}
           script_stop: true
+          command_timeout: 30m
           script: |
             set -e
             cd ${{ secrets.STAGING_PATH }}
             git fetch --all
             git checkout main
             git reset --hard origin/main
-            docker compose pull
-            docker compose up -d --build
+            docker compose up -d --build --remove-orphans
             docker image prune -f
