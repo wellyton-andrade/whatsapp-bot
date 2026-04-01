@@ -3,6 +3,17 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 
+function assertSeedSafety(): void {
+  const nodeEnv = process.env.NODE_ENV;
+  const allowSeedInProduction = process.env.ALLOW_PRISMA_SEED_IN_PRODUCTION === 'true';
+
+  if (nodeEnv === 'production' && !allowSeedInProduction) {
+    throw new Error(
+      'Seed bloqueado em producao. Defina ALLOW_PRISMA_SEED_IN_PRODUCTION=true apenas se tiver certeza absoluta.',
+    );
+  }
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -14,6 +25,8 @@ const prisma = new PrismaClient({ adapter });
 const SEED_DEFAULT_PASSWORD = '12345678';
 
 async function main() {
+  assertSeedSafety();
+
   const tenant = await prisma.tenant.upsert({
     where: { slug: 'tenant-teste' },
     update: {
