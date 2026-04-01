@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { AppError } from '../../shared/errors/appError.js';
-import { sendMessageSchema } from './whatsapp.schema.js';
+import { connectWhatsAppSchema, sendMessageSchema } from './whatsapp.schema.js';
 import { WhatsAppService } from './whatsapp.service.js';
 
 export class WhatsAppController {
@@ -17,7 +17,12 @@ export class WhatsAppController {
 
   connect = async (request: FastifyRequest, reply: FastifyReply) => {
     const tenantId = this.getTenantId(request);
-    const result = await this.service.connect(tenantId);
+    const data = connectWhatsAppSchema.parse(request.body ?? {});
+    const options = {
+      mode: data.mode,
+      ...(data.phoneNumber ? { phoneNumber: data.phoneNumber } : {}),
+    };
+    const result = await this.service.connect(tenantId, options);
     return reply.send(result);
   };
 

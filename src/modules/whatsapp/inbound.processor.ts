@@ -1,14 +1,22 @@
-import { MessageType } from '@prisma/client';
+import { WebhookEvent, MessageType } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import type {
   InboundMessageJobData,
   InboundMessageJobResult,
 } from '../../shared/queue/salesQueue.js';
+import { dispatchTenantWebhookEvent } from '../webhooks/webhook-events.js';
 
 type ConversationState = {
   flowId: string;
   currentStepId: string;
   variables: Record<string, string>;
+};
+
+type InboundProcessorOptions = {
+  sendOutboundMessage?: (
+    to: string,
+    message: string,
+  ) => Promise<{ sent: boolean; errorMessage?: string }>;
 };
 
 function renderTemplate(template: string, variables: Record<string, string>): string {
@@ -18,6 +26,7 @@ function renderTemplate(template: string, variables: Record<string, string>): st
 export async function processInboundMessage(
   app: FastifyInstance,
   payload: InboundMessageJobData,
+  options: InboundProcessorOptions = {},
 ): Promise<InboundMessageJobResult> {
   const now = new Date();
 
@@ -76,6 +85,19 @@ export async function processInboundMessage(
     },
   });
 
+  await dispatchTenantWebhookEvent(app, {
+    tenantId: payload.tenantId,
+    event: WebhookEvent.MESSAGE_RECEIVED,
+    payload: {
+      contactId: contact.id,
+      contactPhone: payload.contactPhone,
+      conversationId: conversation.id,
+      message: payload.message,
+      waMessageId: payload.waMessageId ?? null,
+      receivedAt: now.toISOString(),
+    },
+  });
+
   if (!activeFlow) {
     return {
       processedAt: now.toISOString(),
@@ -83,6 +105,40 @@ export async function processInboundMessage(
       contactPhone: payload.contactPhone,
       replySent: false,
     };
+  }
+
+  // Check if flow trigger matches the inbound message
+  const messageCount = await app.prisma.conversationMessage.count({
+    where: {
+      conversation: {
+        contactId: contact.id,
+      },
+      direction: 'INBOUND',
+    },
+  });
+
+  const isFirstMessage = messageCount === 1; // Just incremented with the new message
+
+  if (activeFlow.triggerType === 'FIRST_MESSAGE' && !isFirstMessage) {
+    return {
+      processedAt: now.toISOString(),
+      tenantId: payload.tenantId,
+      contactPhone: payload.contactPhone,
+      replySent: false,
+    };
+  }
+
+  if (activeFlow.triggerType === 'KEYWORD' && activeFlow.triggerValue) {
+    const messageLower = payload.message.toLowerCase();
+    const keywordLower = activeFlow.triggerValue.toLowerCase();
+    if (!messageLower.includes(keywordLower)) {
+      return {
+        processedAt: now.toISOString(),
+        tenantId: payload.tenantId,
+        contactPhone: payload.contactPhone,
+        replySent: false,
+      };
+    }
   }
 
   const stateKey = `conversation:state:${conversation.id}`;
@@ -155,6 +211,7 @@ export async function processInboundMessage(
   }
 
   let reply = '';
+  let outboundSent = false;
 
   if (currentStep.template) {
     if (
@@ -178,15 +235,38 @@ export async function processInboundMessage(
   }
 
   if (reply) {
+    const outboundResult = options.sendOutboundMessage
+      ? await options.sendOutboundMessage(payload.contactPhone, reply)
+      : { sent: false, errorMessage: 'Outbound sender not configured' };
+    outboundSent = outboundResult.sent;
+
     await app.prisma.conversationMessage.create({
       data: {
         conversationId: conversation.id,
         direction: 'OUTBOUND',
         type: MessageType.TEXT,
         content: reply,
-        status: 'SENT',
+        status: outboundResult.sent ? 'SENT' : 'FAILED',
+        ...(outboundResult.sent
+          ? {}
+          : { errorMessage: outboundResult.errorMessage ?? 'Falha ao enviar no WhatsApp' }),
       },
     });
+
+    if (outboundSent) {
+      await dispatchTenantWebhookEvent(app, {
+        tenantId: payload.tenantId,
+        event: WebhookEvent.MESSAGE_SENT,
+        payload: {
+          contactId: contact.id,
+          contactPhone: payload.contactPhone,
+          conversationId: conversation.id,
+          message: reply,
+          sentAt: new Date().toISOString(),
+          source: 'flow',
+        },
+      });
+    }
   }
 
   const nextStep = currentStep.nextStepId
@@ -214,6 +294,6 @@ export async function processInboundMessage(
     processedAt: now.toISOString(),
     tenantId: payload.tenantId,
     contactPhone: payload.contactPhone,
-    replySent: reply.length > 0,
+    replySent: outboundSent,
   };
 }

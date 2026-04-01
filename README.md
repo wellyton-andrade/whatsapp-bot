@@ -21,6 +21,7 @@ Este projeto entrega uma API completa para operacao de bot comercial no WhatsApp
 - autenticacao JWT e refresh token rotativo
 - arquitetura SaaS multi-tenant
 - modulo de WhatsApp com Baileys multi-sessao
+- sessao WhatsApp persistida no Redis (sem dependencia de pasta local .wa-sessions)
 - engine de fluxos e passos
 - persistencia de conversas e mensagens
 - webhooks com API key e retries via BullMQ

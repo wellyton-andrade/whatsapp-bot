@@ -1,6 +1,7 @@
 import { PrismaClient, UserRole, Plan } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
+import bcrypt from 'bcryptjs';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -9,6 +10,8 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 
 const prisma = new PrismaClient({ adapter });
+
+const SEED_DEFAULT_PASSWORD = '12345678';
 
 async function main() {
   const tenant = await prisma.tenant.upsert({
@@ -30,7 +33,7 @@ async function main() {
     },
   });
 
-  const defaultHash = '$2b$12$Q8MQQnrfhL8ZfTXmxCHBvuBHR6cQfEQAWAnf7x6MUA6Pgg6nW2rsu';
+  const defaultHash = await bcrypt.hash(SEED_DEFAULT_PASSWORD, 12);
 
   await prisma.user.upsert({
     where: { email: 'superadmin@platform.local' },
@@ -69,6 +72,11 @@ async function main() {
       isActive: true,
     },
   });
+
+  console.log('Seed concluido com sucesso.');
+  console.log('Credenciais de desenvolvimento:');
+  console.log(`- superadmin@platform.local / ${SEED_DEFAULT_PASSWORD}`);
+  console.log(`- admin@tenant-teste.local / ${SEED_DEFAULT_PASSWORD}`);
 }
 
 main()

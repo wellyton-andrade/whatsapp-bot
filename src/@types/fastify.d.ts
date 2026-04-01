@@ -1,4 +1,5 @@
 import type { QueueManager } from '../shared/queue/salesQueue.js';
+import type { WhatsAppService } from '../modules/whatsapp/whatsapp.service.js';
 import type { PrismaClient } from '@prisma/client';
 import type { Redis } from 'ioredis';
 
@@ -7,6 +8,7 @@ declare module 'fastify' {
     prisma: PrismaClient;
     redis: Redis;
     queueManager: QueueManager | null;
+    whatsappService: WhatsAppService;
   }
 
   interface FastifyRequest {

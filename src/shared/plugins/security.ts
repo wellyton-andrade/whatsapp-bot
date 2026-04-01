@@ -10,6 +10,8 @@ export async function registerSecurityPlugins(app: FastifyInstance): Promise<voi
   await app.register(cors, {
     origin: getCorsOrigins(),
     credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
   });
 
   await app.register(rateLimit, {

@@ -17,6 +17,7 @@ import { authPlugin } from './shared/plugins/auth.js';
 import { createQueueManager } from './shared/queue/salesQueue.js';
 import { AppError } from './shared/errors/appError.js';
 import { processInboundMessage } from './modules/whatsapp/inbound.processor.js';
+import { WhatsAppService } from './modules/whatsapp/whatsapp.service.js';
 import { processWebhookDelivery } from './modules/webhooks/webhook-delivery.processor.js';
 
 type BuildAppOptions = {
@@ -60,9 +61,16 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   app.decorate('queueManager', null);
 
+  const whatsappService = new WhatsAppService(app);
+  app.decorate('whatsappService', whatsappService);
+
   if (options.enableQueue ?? true) {
     app.queueManager = await createQueueManager({
-      onInboundMessage: async (payload) => processInboundMessage(app, payload),
+      onInboundMessage: async (payload) =>
+        processInboundMessage(app, payload, {
+          sendOutboundMessage: async (to, message) =>
+            WhatsAppService.sendFromActiveSession(payload.tenantId, to, message),
+        }),
       onWebhookDelivery: async (payload) => processWebhookDelivery(app, payload),
     });
   }
@@ -122,6 +130,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await messagesRoutes(app);
   await contactsRoutes(app);
   await webhooksRoutes(app);
+
+  // Attempt to reconnect sessions that were previously connected
+  void app.whatsappService.reconnectSessions();
 
   app.addHook('onClose', async () => {
     if (app.queueManager) {
