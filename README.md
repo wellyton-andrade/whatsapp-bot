@@ -1,282 +1,495 @@
-<h1 align="center">WhatsApp Sales Bot API</h1>
+<h1 align="center">
+  <br />
+  🤖 WhatsApp Sales Bot API
+  <br />
+</h1>
 
 <p align="center">
-  Backend multi-tenant para automacao de vendas no WhatsApp com Fastify, Prisma, Redis e BullMQ.
+  Backend multi-tenant para automação de vendas no WhatsApp.<br />
+  Construído com Fastify, Prisma, Redis e BullMQ.
 </p>
 
 <p align="center">
-  <img alt="Node" src="https://img.shields.io/badge/Node.js-22-339933?logo=nodedotjs&logoColor=white" />
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white" />
-  <img alt="Fastify" src="https://img.shields.io/badge/Fastify-5.x-000000?logo=fastify&logoColor=white" />
-  <img alt="Prisma" src="https://img.shields.io/badge/Prisma-7.x-2D3748?logo=prisma&logoColor=white" />
-  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white" />
-  <img alt="Redis" src="https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white" />
-  <img alt="BullMQ" src="https://img.shields.io/badge/BullMQ-Queue-EA4AAA" />
+  <img alt="Node" src="https://img.shields.io/badge/Node.js-22-339933?logo=nodedotjs&logoColor=white&style=flat-square" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white&style=flat-square" />
+  <img alt="Fastify" src="https://img.shields.io/badge/Fastify-5.x-000000?logo=fastify&logoColor=white&style=flat-square" />
+  <img alt="Prisma" src="https://img.shields.io/badge/Prisma-7.x-2D3748?logo=prisma&logoColor=white&style=flat-square" />
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white&style=flat-square" />
+  <img alt="Redis" src="https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white&style=flat-square" />
+  <img alt="BullMQ" src="https://img.shields.io/badge/BullMQ-Queue-EA4AAA?style=flat-square" />
+  <img alt="License" src="https://img.shields.io/badge/License-ISC-yellow?style=flat-square" />
 </p>
 
-## Visao Geral
+<p align="center">
+  <a href="#-visão-geral">Visão Geral</a> ·
+  <a href="#-stack">Stack</a> ·
+  <a href="#-arquitetura">Arquitetura</a> ·
+  <a href="#-pré-requisitos">Pré-requisitos</a> ·
+  <a href="#-como-rodar">Como Rodar</a> ·
+  <a href="#-uso-da-api">Uso da API</a> ·
+  <a href="#-endpoints">Endpoints</a> ·
+  <a href="#-scripts">Scripts</a> ·
+  <a href="#-testes-e-ci">Testes e CI</a> ·
+  <a href="#-docker">Docker</a>
+</p>
 
-Este projeto entrega uma API completa para operacao de bot comercial no WhatsApp, com:
+---
 
-- autenticacao JWT e refresh token rotativo
-- arquitetura SaaS multi-tenant
-- modulo de WhatsApp com Baileys multi-sessao
-- sessao WhatsApp persistida no Redis (sem dependencia de pasta local .wa-sessions)
-- engine de fluxos e passos
-- persistencia de conversas e mensagens
-- webhooks com API key e retries via BullMQ
-- documentacao OpenAPI no Swagger
+## 📋 Visão Geral
 
-## Stack Tecnica
+Sistema SaaS multi-tenant para operação de bots comerciais no WhatsApp. Cada negócio cadastrado possui seu próprio número conectado, fluxos de atendimento personalizados e mensagens 100% configuráveis via painel administrativo.
 
-<table>
-  <tr>
-    <td><img src="https://cdn.simpleicons.org/nodedotjs/339933" width="16" /> Runtime</td>
-    <td>Node.js 22+</td>
-  </tr>
-  <tr>
-    <td><img src="https://cdn.simpleicons.org/typescript/3178C6" width="16" /> Linguagem</td>
-    <td>TypeScript (strict)</td>
-  </tr>
-  <tr>
-    <td><img src="https://cdn.simpleicons.org/fastify/000000" width="16" /> Web</td>
-    <td>Fastify</td>
-  </tr>
-  <tr>
-    <td><img src="https://cdn.simpleicons.org/prisma/2D3748" width="16" /> ORM</td>
-    <td>Prisma</td>
-  </tr>
-  <tr>
-    <td><img src="https://cdn.simpleicons.org/postgresql/4169E1" width="16" /> Banco</td>
-    <td>PostgreSQL</td>
-  </tr>
-  <tr>
-    <td><img src="https://cdn.simpleicons.org/redis/DC382D" width="16" /> Cache/Fila</td>
-    <td>Redis + BullMQ</td>
-  </tr>
-</table>
+**Principais funcionalidades:**
 
-## Arquitetura
+- 🔐 Autenticação JWT com refresh token rotativo e cookie HttpOnly
+- 🏢 Arquitetura SaaS multi-tenant com isolamento total de dados por tenant
+- 📱 Integração WhatsApp via Baileys com suporte a múltiplas sessões
+- 💾 Sessões WhatsApp persistidas no Redis (sem dependência de pasta local)
+- 🔄 Engine de fluxos e passos configuráveis sem código
+- 💬 Persistência de conversas e mensagens por contato
+- 🪝 Webhooks com API key, assinatura HMAC-SHA256 e retries automáticos via BullMQ
+- 📄 Documentação OpenAPI interativa via Swagger UI
 
-```text
-src/
-  app.ts
-  server.ts
-  config/
-  modules/
-    auth/
-    tenants/
-    users/
-    whatsapp/
-    flows/
-    messages/
-    contacts/
-    webhooks/
-  shared/
-    plugins/
-    middlewares/
-    queue/
-    utils/
-prisma/
-tests/
+---
+
+## 🛠 Stack
+
+| Camada | Tecnologia | Versão |
+|---|---|---|
+| Runtime | Node.js | 22+ |
+| Linguagem | TypeScript (strict) | 5.x |
+| Framework HTTP | Fastify | 5.x |
+| ORM | Prisma | 7.x |
+| Banco de dados | PostgreSQL | 17 |
+| Cache / Sessões | Redis | 7 |
+| Fila de tarefas | BullMQ | latest |
+| Validação | Zod | latest |
+| Logger | Pino | nativo Fastify |
+| Testes | Vitest | latest |
+
+---
+
+## 🏗 Arquitetura
+
+O projeto segue uma arquitetura modular orientada a domínio. Cada módulo encapsula seu próprio controller, service, routes e schema.
+
+```
+.
+├── src/
+│   ├── app.ts                    # Setup do Fastify + plugins
+│   ├── server.ts                 # Entry point
+│   ├── config/
+│   │   └── env.ts                # Variáveis de ambiente validadas com Zod
+│   ├── modules/
+│   │   ├── auth/                 # Login, refresh token, logout
+│   │   ├── tenants/              # CRUD de negócios (SUPER_ADMIN)
+│   │   ├── users/                # Usuários do painel administrativo
+│   │   ├── whatsapp/             # Conexão WA, sessões, QR code, envio
+│   │   ├── flows/                # Fluxos de conversa e steps
+│   │   ├── messages/             # Templates de mensagem com variáveis
+│   │   ├── contacts/             # Contatos e histórico de conversas
+│   │   └── webhooks/             # Webhooks, API keys, eventos externos
+│   └── shared/
+│       ├── plugins/              # Prisma, Redis, Swagger registrados como plugins
+│       ├── middlewares/          # authenticate, resolveTenant, requireRole
+│       ├── queue/                # Setup BullMQ (Queue + Worker + Events)
+│       └── utils/                # Helpers gerais
+├── prisma/
+│   ├── schema.prisma
+│   ├── migrations/
+│   └── seed.ts
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── docker-compose.yml
+└── README.md
 ```
 
-## Swagger
+### Fluxo de mensagem recebida
 
-- URL local: http://localhost:3000/docs
-- Especificacao OpenAPI documentada para todos os endpoints atuais
-- Security schemes configurados:
-  - bearerAuth para JWT
-  - apiKeyAuth para ingestao externa de eventos
+```
+WhatsApp (Baileys)
+      │
+      ▼ evento onMessage
+BullMQ (fila: message-received)
+      │
+      ▼ Worker consome job
+Bot Engine ─── busca tenant + fluxo ativo (PostgreSQL)
+      │       └─ lê estado da conversa (Redis)
+      ▼
+Resolve step ── interpola variáveis no MessageTemplate
+      │
+      ▼
+Baileys envia resposta ──► Usuário WhatsApp
+      │
+      ├─► Persiste ConversationMessage (PostgreSQL)
+      └─► Dispara Webhook externo (se configurado)
+```
 
-## Passo a Passo Para Rodar
+---
 
-### 1) Instalar dependencias
+## ✅ Pré-requisitos
+
+- [Node.js 22+](https://nodejs.org/)
+- [Docker](https://www.docker.com/) e Docker Compose
+- [npm](https://www.npmjs.com/)
+
+---
+
+## 🚀 Como Rodar
+
+### 1. Clonar e instalar dependências
 
 ```bash
+git clone https://github.com/seu-usuario/whatsapp-sales-bot.git
+cd whatsapp-sales-bot
 npm install
 ```
 
-### 2) Subir infraestrutura (Postgres + Redis)
+### 2. Configurar variáveis de ambiente
+
+```bash
+cp .env.example .env
+```
+
+Edite o `.env` com suas configurações:
+
+```env
+# Aplicação
+NODE_ENV=development
+PORT=3000
+SERVER_URL=http://localhost:3000
+
+# Banco de dados
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/salesbot
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# JWT
+JWT_SECRET=sua_chave_secreta_aqui
+JWT_EXPIRES_IN=15m
+REFRESH_TOKEN_EXPIRES_IN=7d
+
+# Cookies
+COOKIE_SECRET=seu_cookie_secret_aqui
+```
+
+### 3. Subir infraestrutura (PostgreSQL + Redis)
 
 ```bash
 docker compose up -d bot redis
 ```
 
-### 3) Aplicar migrations e seed
+### 4. Aplicar migrations e seed
 
 ```bash
 npx prisma migrate dev
 npx prisma db seed
 ```
 
-### 4) Subir API
+### 5. Iniciar o servidor
 
 ```bash
 npm run dev
 ```
 
-### 5) Validar servicos
+### 6. Verificar
 
-- Health check: http://localhost:3000/health
-- Swagger UI: http://localhost:3000/docs
+| Serviço | URL |
+|---|---|
+| Health check | http://localhost:3000/health |
+| Swagger UI | http://localhost:3000/docs |
 
-## Passo a Passo De Uso Da API
+---
 
-### 1) Autenticar
+## 📡 Uso da API
 
-- POST /auth/login
-- Guarde o accessToken retornado
+### Autenticação
 
-### 2) Criar tenant
+Todas as rotas protegidas exigem o header:
 
-- POST /tenants
-- Requer JWT com role SUPER_ADMIN
+```
+Authorization: Bearer <access_token>
+```
 
-### 3) Criar usuario administrativo
+O `access_token` expira em **15 minutos**. Use `/auth/refresh` para renová-lo silenciosamente via cookie HttpOnly `refreshToken`.
 
-- POST /users
+Integrações externas usam API key no header:
 
-### 4) Conectar WhatsApp
+```
+x-api-key: wk_ab12cd.xxxxxxxxxxxxxxxxxxxxx
+```
 
-- POST /whatsapp/connect
-- GET /whatsapp/status
-- POST /whatsapp/send
+---
 
-### 5) Criar fluxo do bot
+### Fluxo básico de uso
 
-- POST /flows
-- POST /flows/:flowId/steps
-- POST /flows/:id/activate
+#### 1 — Autenticar
 
-### 6) Criar templates
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@tenant.com", "password": "12345678"}'
+```
 
-- POST /message-templates
+Guarde o `accessToken` retornado.
 
-### 7) Configurar webhooks
+#### 2 — Criar tenant *(requer SUPER_ADMIN)*
 
-- POST /webhooks
-- POST /webhooks/api-keys
-- POST /webhooks/:id/test
+```bash
+curl -X POST http://localhost:3000/tenants \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Acme LTDA", "slug": "acme", "email": "contato@acme.com", "plan": "PRO"}'
+```
 
-### 8) Ingestao externa (com API key)
+#### 3 — Conectar WhatsApp
 
-- POST /webhooks/events/inbound
-- Header obrigatorio: x-api-key
+```bash
+# Iniciar conexão e obter QR code
+curl -X POST http://localhost:3000/whatsapp/connect \
+  -H "Authorization: Bearer <access_token>"
 
-## Endpoints Disponiveis
+# Verificar status (aguardar CONNECTED após escanear o QR)
+curl http://localhost:3000/whatsapp/status \
+  -H "Authorization: Bearer <access_token>"
+```
+
+#### 4 — Criar template de mensagem
+
+```bash
+curl -X POST http://localhost:3000/message-templates \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Boas Vindas",
+    "content": "Olá {{nome}}, bem-vindo(a) à {{empresa}}! Como posso ajudar?",
+    "type": "TEXT"
+  }'
+```
+
+#### 5 — Criar e ativar fluxo
+
+```bash
+# Criar fluxo
+curl -X POST http://localhost:3000/flows \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Boas-vindas", "triggerType": "FIRST_MESSAGE"}'
+
+# Adicionar step ao fluxo
+curl -X POST http://localhost:3000/flows/<flowId>/steps \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"order": 1, "type": "SEND_MESSAGE", "templateId": "<templateId>"}'
+
+# Ativar fluxo
+curl -X POST http://localhost:3000/flows/<flowId>/activate \
+  -H "Authorization: Bearer <access_token>"
+```
+
+#### 6 — Configurar webhook *(opcional)*
+
+```bash
+curl -X POST http://localhost:3000/webhooks \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "CRM Integration",
+    "url": "https://api.exemplo.com/hooks/whatsapp",
+    "events": ["MESSAGE_RECEIVED", "FLOW_COMPLETED"]
+  }'
+```
+
+---
+
+## 📚 Endpoints
 
 ### System
-
-- GET /health
-
-### Queues
-
-- POST /queues/sales/test
-- GET /queues/sales/:jobId
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/health` | — | Health check da aplicação |
 
 ### Auth
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/auth/login` | — | Autenticar usuário |
+| `POST` | `/auth/refresh` | Cookie | Renovar access token |
+| `POST` | `/auth/logout` | Cookie | Encerrar sessão |
 
-- POST /auth/login
-- POST /auth/refresh
-- POST /auth/logout
-
-### Tenants
-
-- POST /tenants
-- GET /tenants
-- GET /tenants/:id
-- PATCH /tenants/:id
-- DELETE /tenants/:id
+### Tenants *(SUPER_ADMIN)*
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/tenants` | Bearer | Criar tenant |
+| `GET` | `/tenants` | Bearer | Listar tenants |
+| `GET` | `/tenants/:id` | Bearer | Detalhar tenant |
+| `PATCH` | `/tenants/:id` | Bearer | Atualizar tenant |
+| `DELETE` | `/tenants/:id` | Bearer | Remover tenant |
 
 ### Users
-
-- POST /users
-- GET /users/me
-- PATCH /users/me
-- PATCH /users/me/password
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/users` | Bearer | Criar usuário |
+| `GET` | `/users/me` | Bearer | Meu perfil |
+| `PATCH` | `/users/me` | Bearer | Atualizar perfil |
+| `PATCH` | `/users/me/password` | Bearer | Alterar senha |
 
 ### WhatsApp
-
-- POST /whatsapp/connect
-- GET /whatsapp/status
-- POST /whatsapp/disconnect
-- POST /whatsapp/send
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/whatsapp/connect` | Bearer | Iniciar conexão e gerar QR |
+| `GET` | `/whatsapp/status` | Bearer | Status da sessão |
+| `POST` | `/whatsapp/disconnect` | Bearer | Desconectar sessão |
+| `POST` | `/whatsapp/send` | Bearer | Enviar mensagem manual |
 
 ### Flows
-
-- POST /flows
-- GET /flows
-- GET /flows/:id
-- PATCH /flows/:id
-- DELETE /flows/:id
-- POST /flows/:id/activate
-- POST /flows/:flowId/steps
-- GET /flows/:flowId/steps
-- PATCH /flows/:flowId/steps/:stepId
-- DELETE /flows/:flowId/steps/:stepId
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/flows` | Bearer | Criar fluxo |
+| `GET` | `/flows` | Bearer | Listar fluxos |
+| `GET` | `/flows/:id` | Bearer | Detalhar fluxo |
+| `PATCH` | `/flows/:id` | Bearer | Atualizar fluxo |
+| `DELETE` | `/flows/:id` | Bearer | Remover fluxo |
+| `POST` | `/flows/:id/activate` | Bearer | Ativar fluxo |
+| `POST` | `/flows/:flowId/steps` | Bearer | Criar step |
+| `GET` | `/flows/:flowId/steps` | Bearer | Listar steps |
+| `PATCH` | `/flows/:flowId/steps/:stepId` | Bearer | Atualizar step |
+| `DELETE` | `/flows/:flowId/steps/:stepId` | Bearer | Remover step |
 
 ### Message Templates
-
-- POST /message-templates
-- GET /message-templates
-- GET /message-templates/:id
-- PATCH /message-templates/:id
-- DELETE /message-templates/:id
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/message-templates` | Bearer | Criar template |
+| `GET` | `/message-templates` | Bearer | Listar templates |
+| `GET` | `/message-templates/:id` | Bearer | Detalhar template |
+| `PATCH` | `/message-templates/:id` | Bearer | Atualizar template |
+| `DELETE` | `/message-templates/:id` | Bearer | Remover template |
 
 ### Contacts
-
-- GET /contacts
-- GET /contacts/:id
-- GET /contacts/:id/history
-- DELETE /contacts/:id
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/contacts` | Bearer | Listar contatos |
+| `GET` | `/contacts/:id` | Bearer | Detalhar contato |
+| `GET` | `/contacts/:id/history` | Bearer | Histórico de conversas |
+| `DELETE` | `/contacts/:id` | Bearer | Remover contato |
 
 ### Webhooks
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/webhooks` | Bearer | Criar webhook |
+| `GET` | `/webhooks` | Bearer | Listar webhooks |
+| `GET` | `/webhooks/:id` | Bearer | Detalhar webhook |
+| `PATCH` | `/webhooks/:id` | Bearer | Atualizar webhook |
+| `DELETE` | `/webhooks/:id` | Bearer | Remover webhook |
+| `POST` | `/webhooks/:id/test` | Bearer | Testar entrega |
+| `POST` | `/webhooks/api-keys` | Bearer | Criar API key |
+| `GET` | `/webhooks/api-keys` | Bearer | Listar API keys |
+| `POST` | `/webhooks/events/inbound` | API Key | Receber evento externo |
 
-- POST /webhooks
-- GET /webhooks
-- GET /webhooks/:id
-- PATCH /webhooks/:id
-- DELETE /webhooks/:id
-- POST /webhooks/:id/test
-- POST /webhooks/api-keys
-- GET /webhooks/api-keys
-- POST /webhooks/events/inbound (x-api-key)
+### Queues
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/queues/sales/test` | — | Enfileirar mensagem de teste |
+| `GET` | `/queues/sales/:jobId` | — | Consultar status do job |
 
-## Scripts
+---
+
+## ⚙️ Scripts
 
 ```bash
-npm run dev
-npm run build
-npm run start
-npm test
-npm run lint
-npm run lint:fix
-npm run format
-npm run format:check
+# Desenvolvimento
+npm run dev          # Inicia com hot-reload (tsx watch)
+
+# Build
+npm run build        # Compila TypeScript com tsup
+npm run start        # Inicia build de produção
+
+# Testes
+npm test             # Executa todos os testes (Vitest)
+npm run test:watch   # Modo watch
+npm run test:cov     # Com cobertura de código
+
+# Qualidade
+npm run lint         # ESLint
+npm run lint:fix     # ESLint com correção automática
+npm run format       # Prettier
+npm run format:check # Verifica formatação sem alterar
+
+# Prisma
+npm run db:migrate   # Aplica migrations
+npm run db:seed      # Executa seed
+npm run db:studio    # Abre Prisma Studio
 ```
 
-## Qualidade E CI
+---
 
-- ESLint + Prettier
-- Husky pre-commit
-- Vitest integracao
-- GitHub Actions CI: lint + format + test + build
+## 🧪 Testes e CI
 
-## Docker
+### Estratégia de testes
 
-### Subir tudo via compose (app + banco + redis)
+| Camada | Foco | Prioridade |
+|---|---|---|
+| **Unit** | Bot engine, isolamento de tenant, lógica de auth, templates | 🔴 Alta |
+| **Integration** | Rotas de auth, CRUD de fluxos, middlewares, rate limiting | 🟡 Média |
+| **E2E** | Onboarding completo de tenant, simulação de conversa | 🟢 Nice to have |
 
-```bash
-docker compose up -d
+Testes de isolamento multi-tenant são **obrigatórios** — um vazamento de dados entre tenants é crítico.
+
+### Pipeline CI (GitHub Actions)
+
+O pipeline executa em todo PR e push para `main`:
+
+```
+lint → format:check → test → build
 ```
 
-### Derrubar ambiente
+---
+
+## 🐳 Docker
+
+### Apenas infraestrutura (recomendado para desenvolvimento)
 
 ```bash
+# Subir PostgreSQL + Redis
+docker compose up -d bot redis
+
+# Derrubar
 docker compose down
 ```
 
-## Licenca
+### Stack completa (app + banco + redis)
 
-ISC
+```bash
+# Subir tudo
+docker compose up -d
+
+# Ver logs
+docker compose logs -f api
+
+# Derrubar e limpar volumes
+docker compose down -v
+```
+
+---
+
+## 🔐 Segurança
+
+| Mecanismo | Implementação |
+|---|---|
+| Senhas | bcryptjs com cost factor 12 |
+| Access Token | JWT com expiração de 15 minutos |
+| Refresh Token | Rotativo, hash SHA-256 no banco, cookie HttpOnly |
+| API Keys | Prefixadas, hash SHA-256 armazenado |
+| Tenant isolation | `tenantId` obrigatório em todas as queries via middleware |
+| Rate limiting | Por IP e por tenant (`@fastify/rate-limit`) |
+| Headers HTTP | Helmet com políticas restritivas |
+| Validação | Zod em todos os inputs de rota e variáveis de ambiente |
+| Webhooks | Assinatura HMAC-SHA256 no payload |
+
+---
+
+## 📄 Licença
+
+Distribuído sob a licença **ISC**. Veja `LICENSE` para mais detalhes.
