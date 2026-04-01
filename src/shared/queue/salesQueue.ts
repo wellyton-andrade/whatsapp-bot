@@ -78,6 +78,35 @@ export async function createQueueManager(handlers: QueueHandlers = {}): Promise<
     enableReadyCheck: true,
   });
 
+  // Simple circuit breaker: track consecutive job failures across queues
+  const circuitBreakerState = {
+    failureCount: 0,
+    lastFailureTime: 0,
+    isOpen: false,
+    // Circuit opens after 10 consecutive failures within 30 seconds
+    failureThreshold: 10,
+    resetTimeoutMs: 30000,
+    check: function () {
+      // Auto-reset if enough time has passed
+      if (Date.now() - this.lastFailureTime > this.resetTimeoutMs) {
+        this.failureCount = 0;
+        this.isOpen = false;
+      }
+      return this.isOpen;
+    },
+    recordFailure: function () {
+      this.failureCount++;
+      this.lastFailureTime = Date.now();
+      this.isOpen = this.failureCount >= this.failureThreshold;
+    },
+    recordSuccess: function () {
+      this.failureCount = Math.max(0, this.failureCount - 1);
+      if (this.failureCount === 0) {
+        this.isOpen = false;
+      }
+    },
+  };
+
   const workerConnection = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
     enableReadyCheck: true,
@@ -194,6 +223,31 @@ export async function createQueueManager(handlers: QueueHandlers = {}): Promise<
     connection: queueConnection,
   });
 
+  // Circuit breaker: monitor job failures to prevent cascading failures
+  events.on('failed', () => {
+    circuitBreakerState.recordFailure();
+  });
+
+  events.on('completed', () => {
+    circuitBreakerState.recordSuccess();
+  });
+
+  inboundEvents.on('failed', () => {
+    circuitBreakerState.recordFailure();
+  });
+
+  inboundEvents.on('completed', () => {
+    circuitBreakerState.recordSuccess();
+  });
+
+  webhookEvents.on('failed', () => {
+    circuitBreakerState.recordFailure();
+  });
+
+  webhookEvents.on('completed', () => {
+    circuitBreakerState.recordSuccess();
+  });
+
   await queue.waitUntilReady();
   await inboundQueue.waitUntilReady();
   await webhookQueue.waitUntilReady();
@@ -206,16 +260,32 @@ export async function createQueueManager(handlers: QueueHandlers = {}): Promise<
 
   return {
     async enqueueSalesMessage(payload, options) {
+      // Circuit breaker: reject new jobs if threshold reached
+      if (circuitBreakerState.check()) {
+        throw new Error(
+          'Queue circuit open: too many consecutive failures. Please try again later.',
+        );
+      }
       const job = await queue.add('send-sales-message', payload, options);
       return String(job.id);
     },
 
     async enqueueInboundMessage(payload, options) {
+      if (circuitBreakerState.check()) {
+        throw new Error(
+          'Queue circuit open: too many consecutive failures. Please try again later.',
+        );
+      }
       const job = await inboundQueue.add('process-inbound-message', payload, options);
       return String(job.id);
     },
 
     async enqueueWebhookDelivery(payload, options) {
+      if (circuitBreakerState.check()) {
+        throw new Error(
+          'Queue circuit open: too many consecutive failures. Please try again later.',
+        );
+      }
       const job = await webhookQueue.add('deliver-webhook', payload, options);
       return String(job.id);
     },

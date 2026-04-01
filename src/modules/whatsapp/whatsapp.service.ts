@@ -542,4 +542,23 @@ export class WhatsAppService {
       }
     }
   }
+
+  // Graceful cleanup: close all active sessions and clear memory
+  // Prevents memory leaks from singleton session map on shutdown
+  static async closeSessions() {
+    for (const [tenantId, socket] of WhatsAppService.sessions.entries()) {
+      try {
+        if (socket.ws) {
+          socket.ws.close();
+        }
+        socket.end(new Error('Graceful shutdown'));
+      } catch (error) {
+        // Ignore errors during shutdown
+        console.error(`Failed to close session for ${tenantId}:`, error);
+      }
+    }
+
+    // Clear the session map to release memory
+    WhatsAppService.sessions.clear();
+  }
 }
