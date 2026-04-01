@@ -11,7 +11,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
     ports:
-      - '${PORT:-3000}:3000'
+      - '${PORT:-80}:${PORT:-80}'
     depends_on:
       bot:
         condition: service_healthy
