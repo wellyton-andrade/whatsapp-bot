@@ -138,8 +138,10 @@ describe('Webhooks Integration Tests', () => {
       },
     });
 
-    expect(response.statusCode).toBe(400);
-    expect(response.json<{ error: string }>().error).toBe('contactPhone and message are required');
+    // Zod schema validation returns 422 Unprocessable Entity
+    expect(response.statusCode).toBe(422);
+    // Response contains validation error details in development mode, or just message in production
+    expect(response.json<{ message: string }>().message).toContain('Validation error');
   });
 
   test('should return 503 when queue is disabled for inbound event', async () => {

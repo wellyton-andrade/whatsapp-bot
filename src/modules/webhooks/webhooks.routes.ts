@@ -4,6 +4,7 @@ import { authenticateApiKey } from '../../shared/middlewares/authenticateApiKey.
 import { resolveTenant } from '../../shared/middlewares/resolveTenant.js';
 import { WebhooksController } from './webhooks.controller.js';
 import { WebhooksService } from './webhooks.service.js';
+import { inboundWebhookSchema } from './webhooks.schema.js';
 
 export async function webhooksRoutes(app: FastifyInstance): Promise<void> {
   const guard = [authenticate, resolveTenant];
@@ -28,15 +29,8 @@ export async function webhooksRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(401).send({ error: 'Unauthorized' });
       }
 
-      const body = request.body as {
-        contactPhone?: string;
-        message?: string;
-        waMessageId?: string;
-      };
-
-      if (!body.contactPhone || !body.message) {
-        return reply.status(400).send({ error: 'contactPhone and message are required' });
-      }
+      // Use Zod schema for proper validation instead of manual checks
+      const data = inboundWebhookSchema.parse(request.body);
 
       if (!app.queueManager) {
         return reply.status(503).send({ error: 'Queue disabled' });
@@ -44,9 +38,9 @@ export async function webhooksRoutes(app: FastifyInstance): Promise<void> {
 
       const jobId = await app.queueManager.enqueueInboundMessage({
         tenantId,
-        contactPhone: body.contactPhone,
-        message: body.message,
-        ...(body.waMessageId !== undefined ? { waMessageId: body.waMessageId } : {}),
+        contactPhone: data.contactPhone,
+        message: data.message,
+        ...(data.waMessageId !== undefined ? { waMessageId: data.waMessageId } : {}),
       });
 
       return reply.status(202).send({ jobId });
