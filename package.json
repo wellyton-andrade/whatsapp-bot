@@ -21,7 +21,7 @@
   "license": "ISC",
   "author": "wellyton andradew",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "src/server.ts",
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc",
