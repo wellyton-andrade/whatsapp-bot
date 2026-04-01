@@ -48,8 +48,52 @@ describe('Schemas Unit Tests', () => {
     expect(result.success).toBe(false);
   });
 
+  test('createUserSchema should sanitize email and reject extra fields', () => {
+    const parsed = createUserSchema.safeParse({
+      name: '  Maria Silva  ',
+      email: '  Maria@Example.COM  ',
+      password: 'Strong@123',
+      extraField: 'not-allowed',
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  test('createUserSchema should enforce strong password', () => {
+    const result = createUserSchema.safeParse({
+      name: 'Maria',
+      email: 'maria@example.com',
+      password: '12345678',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('createUserSchema should normalize valid payload', () => {
+    const result = createUserSchema.safeParse({
+      name: '  Maria Silva  ',
+      email: '  Maria@Example.COM  ',
+      password: 'Strong@123',
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe('Maria Silva');
+      expect(result.data.email).toBe('maria@example.com');
+    }
+  });
+
   test('updatePasswordSchema should require both passwords', () => {
     const result = updatePasswordSchema.safeParse({ currentPassword: '12345678' });
+    expect(result.success).toBe(false);
+  });
+
+  test('updatePasswordSchema should reject weak new password', () => {
+    const result = updatePasswordSchema.safeParse({
+      currentPassword: 'old-password',
+      newPassword: '12345678',
+    });
+
     expect(result.success).toBe(false);
   });
 
