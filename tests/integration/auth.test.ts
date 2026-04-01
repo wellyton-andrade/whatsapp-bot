@@ -101,4 +101,24 @@ describe('Auth Integration Tests', () => {
 
     expect(response.statusCode).toBe(401);
   });
+
+  test('should reject refresh without refresh token', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/auth/refresh',
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json<{ error: string }>().error).toBe('Refresh token ausente');
+  });
+
+  test('should return 204 on logout even without refresh cookie', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/auth/logout',
+    });
+
+    expect(response.statusCode).toBe(204);
+  });
 });

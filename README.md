@@ -54,18 +54,18 @@ Sistema SaaS multi-tenant para operação de bots comerciais no WhatsApp. Cada n
 
 ## 🛠 Stack
 
-| Camada | Tecnologia | Versão |
-|---|---|---|
-| Runtime | Node.js | 22+ |
-| Linguagem | TypeScript (strict) | 5.x |
-| Framework HTTP | Fastify | 5.x |
-| ORM | Prisma | 7.x |
-| Banco de dados | PostgreSQL | 17 |
-| Cache / Sessões | Redis | 7 |
-| Fila de tarefas | BullMQ | latest |
-| Validação | Zod | latest |
-| Logger | Pino | nativo Fastify |
-| Testes | Vitest | latest |
+| Camada          | Tecnologia          | Versão         |
+| --------------- | ------------------- | -------------- |
+| Runtime         | Node.js             | 22+            |
+| Linguagem       | TypeScript (strict) | 5.x            |
+| Framework HTTP  | Fastify             | 5.x            |
+| ORM             | Prisma              | 7.x            |
+| Banco de dados  | PostgreSQL          | 17             |
+| Cache / Sessões | Redis               | 7              |
+| Fila de tarefas | BullMQ              | latest         |
+| Validação       | Zod                 | latest         |
+| Logger          | Pino                | nativo Fastify |
+| Testes          | Vitest              | latest         |
 
 ---
 
@@ -197,10 +197,10 @@ npm run dev
 
 ### 6. Verificar
 
-| Serviço | URL |
-|---|---|
+| Serviço      | URL                          |
+| ------------ | ---------------------------- |
 | Health check | http://localhost:3000/health |
-| Swagger UI | http://localhost:3000/docs |
+| Swagger UI   | http://localhost:3000/docs   |
 
 ---
 
@@ -236,7 +236,7 @@ curl -X POST http://localhost:3000/auth/login \
 
 Guarde o `accessToken` retornado.
 
-#### 2 — Criar tenant *(requer SUPER_ADMIN)*
+#### 2 — Criar tenant _(requer SUPER_ADMIN)_
 
 ```bash
 curl -X POST http://localhost:3000/tenants \
@@ -290,7 +290,7 @@ curl -X POST http://localhost:3000/flows/<flowId>/activate \
   -H "Authorization: Bearer <access_token>"
 ```
 
-#### 6 — Configurar webhook *(opcional)*
+#### 6 — Configurar webhook _(opcional)_
 
 ```bash
 curl -X POST http://localhost:3000/webhooks \
@@ -308,91 +308,101 @@ curl -X POST http://localhost:3000/webhooks \
 ## 📚 Endpoints
 
 ### System
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `GET` | `/health` | — | Health check da aplicação |
+
+| Método | Rota      | Auth | Descrição                 |
+| ------ | --------- | ---- | ------------------------- |
+| `GET`  | `/health` | —    | Health check da aplicação |
 
 ### Auth
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/auth/login` | — | Autenticar usuário |
-| `POST` | `/auth/refresh` | Cookie | Renovar access token |
-| `POST` | `/auth/logout` | Cookie | Encerrar sessão |
 
-### Tenants *(SUPER_ADMIN)*
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/tenants` | Bearer | Criar tenant |
-| `GET` | `/tenants` | Bearer | Listar tenants |
-| `GET` | `/tenants/:id` | Bearer | Detalhar tenant |
-| `PATCH` | `/tenants/:id` | Bearer | Atualizar tenant |
-| `DELETE` | `/tenants/:id` | Bearer | Remover tenant |
+| Método | Rota            | Auth   | Descrição            |
+| ------ | --------------- | ------ | -------------------- |
+| `POST` | `/auth/login`   | —      | Autenticar usuário   |
+| `POST` | `/auth/refresh` | Cookie | Renovar access token |
+| `POST` | `/auth/logout`  | Cookie | Encerrar sessão      |
+
+### Tenants _(SUPER_ADMIN)_
+
+| Método   | Rota           | Auth   | Descrição        |
+| -------- | -------------- | ------ | ---------------- |
+| `POST`   | `/tenants`     | Bearer | Criar tenant     |
+| `GET`    | `/tenants`     | Bearer | Listar tenants   |
+| `GET`    | `/tenants/:id` | Bearer | Detalhar tenant  |
+| `PATCH`  | `/tenants/:id` | Bearer | Atualizar tenant |
+| `DELETE` | `/tenants/:id` | Bearer | Remover tenant   |
 
 ### Users
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/users` | Bearer | Criar usuário |
-| `GET` | `/users/me` | Bearer | Meu perfil |
-| `PATCH` | `/users/me` | Bearer | Atualizar perfil |
-| `PATCH` | `/users/me/password` | Bearer | Alterar senha |
+
+| Método  | Rota                 | Auth   | Descrição        |
+| ------- | -------------------- | ------ | ---------------- |
+| `POST`  | `/users`             | Bearer | Criar usuário    |
+| `GET`   | `/users/me`          | Bearer | Meu perfil       |
+| `PATCH` | `/users/me`          | Bearer | Atualizar perfil |
+| `PATCH` | `/users/me/password` | Bearer | Alterar senha    |
 
 ### WhatsApp
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/whatsapp/connect` | Bearer | Iniciar conexão e gerar QR |
-| `GET` | `/whatsapp/status` | Bearer | Status da sessão |
-| `POST` | `/whatsapp/disconnect` | Bearer | Desconectar sessão |
-| `POST` | `/whatsapp/send` | Bearer | Enviar mensagem manual |
+
+| Método | Rota                   | Auth   | Descrição                  |
+| ------ | ---------------------- | ------ | -------------------------- |
+| `POST` | `/whatsapp/connect`    | Bearer | Iniciar conexão e gerar QR |
+| `GET`  | `/whatsapp/status`     | Bearer | Status da sessão           |
+| `POST` | `/whatsapp/disconnect` | Bearer | Desconectar sessão         |
+| `POST` | `/whatsapp/send`       | Bearer | Enviar mensagem manual     |
 
 ### Flows
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/flows` | Bearer | Criar fluxo |
-| `GET` | `/flows` | Bearer | Listar fluxos |
-| `GET` | `/flows/:id` | Bearer | Detalhar fluxo |
-| `PATCH` | `/flows/:id` | Bearer | Atualizar fluxo |
-| `DELETE` | `/flows/:id` | Bearer | Remover fluxo |
-| `POST` | `/flows/:id/activate` | Bearer | Ativar fluxo |
-| `POST` | `/flows/:flowId/steps` | Bearer | Criar step |
-| `GET` | `/flows/:flowId/steps` | Bearer | Listar steps |
-| `PATCH` | `/flows/:flowId/steps/:stepId` | Bearer | Atualizar step |
-| `DELETE` | `/flows/:flowId/steps/:stepId` | Bearer | Remover step |
+
+| Método   | Rota                           | Auth   | Descrição       |
+| -------- | ------------------------------ | ------ | --------------- |
+| `POST`   | `/flows`                       | Bearer | Criar fluxo     |
+| `GET`    | `/flows`                       | Bearer | Listar fluxos   |
+| `GET`    | `/flows/:id`                   | Bearer | Detalhar fluxo  |
+| `PATCH`  | `/flows/:id`                   | Bearer | Atualizar fluxo |
+| `DELETE` | `/flows/:id`                   | Bearer | Remover fluxo   |
+| `POST`   | `/flows/:id/activate`          | Bearer | Ativar fluxo    |
+| `POST`   | `/flows/:flowId/steps`         | Bearer | Criar step      |
+| `GET`    | `/flows/:flowId/steps`         | Bearer | Listar steps    |
+| `PATCH`  | `/flows/:flowId/steps/:stepId` | Bearer | Atualizar step  |
+| `DELETE` | `/flows/:flowId/steps/:stepId` | Bearer | Remover step    |
 
 ### Message Templates
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/message-templates` | Bearer | Criar template |
-| `GET` | `/message-templates` | Bearer | Listar templates |
-| `GET` | `/message-templates/:id` | Bearer | Detalhar template |
-| `PATCH` | `/message-templates/:id` | Bearer | Atualizar template |
-| `DELETE` | `/message-templates/:id` | Bearer | Remover template |
+
+| Método   | Rota                     | Auth   | Descrição          |
+| -------- | ------------------------ | ------ | ------------------ |
+| `POST`   | `/message-templates`     | Bearer | Criar template     |
+| `GET`    | `/message-templates`     | Bearer | Listar templates   |
+| `GET`    | `/message-templates/:id` | Bearer | Detalhar template  |
+| `PATCH`  | `/message-templates/:id` | Bearer | Atualizar template |
+| `DELETE` | `/message-templates/:id` | Bearer | Remover template   |
 
 ### Contacts
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `GET` | `/contacts` | Bearer | Listar contatos |
-| `GET` | `/contacts/:id` | Bearer | Detalhar contato |
-| `GET` | `/contacts/:id/history` | Bearer | Histórico de conversas |
-| `DELETE` | `/contacts/:id` | Bearer | Remover contato |
+
+| Método   | Rota                    | Auth   | Descrição              |
+| -------- | ----------------------- | ------ | ---------------------- |
+| `GET`    | `/contacts`             | Bearer | Listar contatos        |
+| `GET`    | `/contacts/:id`         | Bearer | Detalhar contato       |
+| `GET`    | `/contacts/:id/history` | Bearer | Histórico de conversas |
+| `DELETE` | `/contacts/:id`         | Bearer | Remover contato        |
 
 ### Webhooks
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/webhooks` | Bearer | Criar webhook |
-| `GET` | `/webhooks` | Bearer | Listar webhooks |
-| `GET` | `/webhooks/:id` | Bearer | Detalhar webhook |
-| `PATCH` | `/webhooks/:id` | Bearer | Atualizar webhook |
-| `DELETE` | `/webhooks/:id` | Bearer | Remover webhook |
-| `POST` | `/webhooks/:id/test` | Bearer | Testar entrega |
-| `POST` | `/webhooks/api-keys` | Bearer | Criar API key |
-| `GET` | `/webhooks/api-keys` | Bearer | Listar API keys |
-| `POST` | `/webhooks/events/inbound` | API Key | Receber evento externo |
+
+| Método   | Rota                       | Auth    | Descrição              |
+| -------- | -------------------------- | ------- | ---------------------- |
+| `POST`   | `/webhooks`                | Bearer  | Criar webhook          |
+| `GET`    | `/webhooks`                | Bearer  | Listar webhooks        |
+| `GET`    | `/webhooks/:id`            | Bearer  | Detalhar webhook       |
+| `PATCH`  | `/webhooks/:id`            | Bearer  | Atualizar webhook      |
+| `DELETE` | `/webhooks/:id`            | Bearer  | Remover webhook        |
+| `POST`   | `/webhooks/:id/test`       | Bearer  | Testar entrega         |
+| `POST`   | `/webhooks/api-keys`       | Bearer  | Criar API key          |
+| `GET`    | `/webhooks/api-keys`       | Bearer  | Listar API keys        |
+| `POST`   | `/webhooks/events/inbound` | API Key | Receber evento externo |
 
 ### Queues
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/queues/sales/test` | — | Enfileirar mensagem de teste |
-| `GET` | `/queues/sales/:jobId` | — | Consultar status do job |
+
+| Método | Rota                   | Auth | Descrição                    |
+| ------ | ---------------------- | ---- | ---------------------------- |
+| `POST` | `/queues/sales/test`   | —    | Enfileirar mensagem de teste |
+| `GET`  | `/queues/sales/:jobId` | —    | Consultar status do job      |
 
 ---
 
@@ -429,11 +439,11 @@ npm run db:studio    # Abre Prisma Studio
 
 ### Estratégia de testes
 
-| Camada | Foco | Prioridade |
-|---|---|---|
-| **Unit** | Bot engine, isolamento de tenant, lógica de auth, templates | 🔴 Alta |
-| **Integration** | Rotas de auth, CRUD de fluxos, middlewares, rate limiting | 🟡 Média |
-| **E2E** | Onboarding completo de tenant, simulação de conversa | 🟢 Nice to have |
+| Camada          | Foco                                                        | Prioridade      |
+| --------------- | ----------------------------------------------------------- | --------------- |
+| **Unit**        | Bot engine, isolamento de tenant, lógica de auth, templates | 🔴 Alta         |
+| **Integration** | Rotas de auth, CRUD de fluxos, middlewares, rate limiting   | 🟡 Média        |
+| **E2E**         | Onboarding completo de tenant, simulação de conversa        | 🟢 Nice to have |
 
 Testes de isolamento multi-tenant são **obrigatórios** — um vazamento de dados entre tenants é crítico.
 
@@ -476,17 +486,17 @@ docker compose down -v
 
 ## 🔐 Segurança
 
-| Mecanismo | Implementação |
-|---|---|
-| Senhas | bcryptjs com cost factor 12 |
-| Access Token | JWT com expiração de 15 minutos |
-| Refresh Token | Rotativo, hash SHA-256 no banco, cookie HttpOnly |
-| API Keys | Prefixadas, hash SHA-256 armazenado |
+| Mecanismo        | Implementação                                             |
+| ---------------- | --------------------------------------------------------- |
+| Senhas           | bcryptjs com cost factor 12                               |
+| Access Token     | JWT com expiração de 15 minutos                           |
+| Refresh Token    | Rotativo, hash SHA-256 no banco, cookie HttpOnly          |
+| API Keys         | Prefixadas, hash SHA-256 armazenado                       |
 | Tenant isolation | `tenantId` obrigatório em todas as queries via middleware |
-| Rate limiting | Por IP e por tenant (`@fastify/rate-limit`) |
-| Headers HTTP | Helmet com políticas restritivas |
-| Validação | Zod em todos os inputs de rota e variáveis de ambiente |
-| Webhooks | Assinatura HMAC-SHA256 no payload |
+| Rate limiting    | Por IP e por tenant (`@fastify/rate-limit`)               |
+| Headers HTTP     | Helmet com políticas restritivas                          |
+| Validação        | Zod em todos os inputs de rota e variáveis de ambiente    |
+| Webhooks         | Assinatura HMAC-SHA256 no payload                         |
 
 ---
 

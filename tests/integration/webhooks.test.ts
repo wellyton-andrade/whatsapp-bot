@@ -99,4 +99,82 @@ describe('Webhooks Integration Tests', () => {
     expect(inboundResponse.statusCode).toBe(202);
     expect(inboundResponse.json<{ jobId: string }>().jobId).toBe('inbound-job');
   });
+
+  test('should reject inbound event without x-api-key', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/webhooks/events/inbound',
+      payload: {
+        contactPhone: '5511999999999',
+        message: 'oi',
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  test('should reject inbound event when required fields are missing', async () => {
+    const apiKeyResponse = await app.inject({
+      method: 'POST',
+      url: '/webhooks/api-keys',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
+      payload: {
+        name: 'Inbound Key Missing Fields',
+      },
+    });
+
+    const body = apiKeyResponse.json<{ key: string }>();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/webhooks/events/inbound',
+      headers: {
+        'x-api-key': body.key,
+      },
+      payload: {
+        contactPhone: '5511999999999',
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json<{ error: string }>().error).toBe('contactPhone and message are required');
+  });
+
+  test('should return 503 when queue is disabled for inbound event', async () => {
+    const apiKeyResponse = await app.inject({
+      method: 'POST',
+      url: '/webhooks/api-keys',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
+      payload: {
+        name: 'Inbound Key Queue Disabled',
+      },
+    });
+
+    const body = apiKeyResponse.json<{ key: string }>();
+    const originalQueueManager = app.queueManager;
+    app.queueManager = null;
+
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/webhooks/events/inbound',
+        headers: {
+          'x-api-key': body.key,
+        },
+        payload: {
+          contactPhone: '5511999999999',
+          message: 'oi',
+        },
+      });
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json<{ error: string }>().error).toBe('Queue disabled');
+    } finally {
+      app.queueManager = originalQueueManager;
+    }
+  });
 });
