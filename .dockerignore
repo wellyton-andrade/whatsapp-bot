@@ -6,3 +6,7 @@ dist
 npm-debug.log*
 coverage
 .env
+tests
+.github
+.husky
+README.md
