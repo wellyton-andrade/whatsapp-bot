@@ -15,6 +15,7 @@ import { registerSwagger } from './shared/plugins/swagger.js';
 import { prismaPlugin } from './shared/plugins/prisma.js';
 import { redisPlugin } from './shared/plugins/redis.js';
 import { authPlugin } from './shared/plugins/auth.js';
+import { metricsPlugin } from './shared/plugins/metrics.js';
 import { createQueueManager } from './shared/queue/salesQueue.js';
 import { AppError } from './shared/errors/appError.js';
 import { processInboundMessage } from './modules/whatsapp/inbound.processor.js';
@@ -82,6 +83,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(prismaPlugin);
   await app.register(redisPlugin);
   await app.register(authPlugin);
+  await app.register(metricsPlugin);
 
   app.setErrorHandler((error, request, reply) => {
     let statusCode = 500;
@@ -149,7 +151,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   app.decorate('queueManager', null);
 
-  const whatsappService = new WhatsAppService(app);
+  const whatsappService = WhatsAppService.createFromDependencies(app.prisma, app.log, app.redis);
   app.decorate('whatsappService', whatsappService);
 
   if (options.enableQueue ?? true) {

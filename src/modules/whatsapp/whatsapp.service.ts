@@ -139,6 +139,40 @@ function toJid(phone: string): string {
 export class WhatsAppService {
   private static sessions: SessionMap = new Map();
 
+  // Dependencies injected to reduce coupling
+  private readonly prisma: FastifyInstance['prisma'];
+  private readonly logger: FastifyInstance['log'];
+  private readonly redis: FastifyInstance['redis'];
+
+  // Keep app for backwards compatibility where needed
+  private readonly app?: FastifyInstance;
+
+  private constructor(
+    prisma: FastifyInstance['prisma'],
+    logger: FastifyInstance['log'],
+    redis: FastifyInstance['redis'],
+    app?: FastifyInstance,
+  ) {
+    this.prisma = prisma;
+    this.logger = logger;
+    this.redis = redis;
+    this.app = app;
+  }
+
+  // Factory method for dependency injection (new pattern)
+  static createFromDependencies(
+    prisma: FastifyInstance['prisma'],
+    logger: FastifyInstance['log'],
+    redis: FastifyInstance['redis'],
+  ): WhatsAppService {
+    return new WhatsAppService(prisma, logger, redis);
+  }
+
+  // Factory method for legacy pattern (with full app)
+  static createFromApp(app: FastifyInstance): WhatsAppService {
+    return new WhatsAppService(app.prisma, app.log, app.redis, app);
+  }
+
   private static normalizePairingPhone(phoneNumber: string): string {
     return phoneNumber.replace(/\D/g, '');
   }
@@ -166,8 +200,6 @@ export class WhatsAppService {
       return { sent: false, errorMessage };
     }
   }
-
-  constructor(private readonly app: FastifyInstance) {}
 
   private async requestPairingCode(
     tenantId: string,
