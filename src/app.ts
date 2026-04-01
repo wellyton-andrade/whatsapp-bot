@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { authRoutes } from './modules/auth/auth.routes.js';
@@ -19,6 +20,7 @@ import { AppError } from './shared/errors/appError.js';
 import { processInboundMessage } from './modules/whatsapp/inbound.processor.js';
 import { WhatsAppService } from './modules/whatsapp/whatsapp.service.js';
 import { processWebhookDelivery } from './modules/webhooks/webhook-delivery.processor.js';
+import { env } from './config/env.js';
 
 type BuildAppOptions = {
   logger?: boolean;
@@ -26,34 +28,114 @@ type BuildAppOptions = {
 };
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
+  const loggerConfig =
+    options.logger === false
+      ? false
+      : {
+          level: env.LOG_LEVEL,
+          messageKey: 'message',
+          base: {
+            service: 'whatsapp-bot-api',
+            env: env.NODE_ENV,
+          },
+          redact: {
+            paths: [
+              'req.headers.authorization',
+              'req.headers.cookie',
+              'req.body.password',
+              'req.body.currentPassword',
+              'req.body.newPassword',
+              'req.body.refreshToken',
+              'headers.authorization',
+              'headers.cookie',
+            ],
+            censor: '[REDACTED]',
+          },
+        };
+
   const app = Fastify({
-    logger: options.logger ?? true,
+    logger: loggerConfig,
+    disableRequestLogging: true,
+    requestIdHeader: 'x-request-id',
+    requestIdLogLabel: 'requestId',
+    genReqId: (request) => {
+      const headerRequestId = request.headers['x-request-id'];
+      return typeof headerRequestId === 'string' && headerRequestId.length > 0
+        ? headerRequestId
+        : randomUUID();
+    },
+  });
+
+  app.addHook('onRequest', async (request) => {
+    request.log.info(
+      {
+        requestId: request.id,
+        method: request.method,
+        path: request.url,
+      },
+      'request received',
+    );
+  });
+
+  app.addHook('onResponse', async (request, reply) => {
+    request.log.info(
+      {
+        requestId: request.id,
+        method: request.method,
+        path: request.url,
+        statusCode: reply.statusCode,
+        responseTimeMs: reply.elapsedTime,
+      },
+      'request completed',
+    );
   });
 
   await app.register(prismaPlugin);
   await app.register(redisPlugin);
   await app.register(authPlugin);
 
-  app.setErrorHandler((error, _request, reply) => {
+  app.setErrorHandler((error, request, reply) => {
+    let statusCode = 500;
+
     if (error instanceof AppError) {
-      return reply.status(error.statusCode).send({ error: error.message });
+      statusCode = error.statusCode;
+    } else if (error instanceof ZodError) {
+      statusCode = 422;
+    } else if (typeof (error as { statusCode?: number }).statusCode === 'number') {
+      const candidate = (error as { statusCode: number }).statusCode;
+      if (candidate >= 400 && candidate < 600) {
+        statusCode = candidate;
+      }
     }
 
-    if (error instanceof ZodError) {
-      return reply.status(422).send({
-        error: 'Validation error',
-        details: error.issues,
-      });
+    let message = 'Internal server error';
+
+    if (error instanceof AppError) {
+      message = error.message;
+    } else if (error instanceof ZodError) {
+      message = 'Validation error';
+    } else if (statusCode < 500) {
+      message = error instanceof Error ? error.message : 'Request error';
     }
 
-    if (typeof (error as { statusCode?: number }).statusCode === 'number') {
-      const statusCode = (error as { statusCode: number }).statusCode;
-      const message = error instanceof Error ? error.message : 'Request error';
-      return reply.status(statusCode).send({ error: message });
+    if (statusCode >= 500) {
+      app.log.error(
+        {
+          err: error,
+          requestId: request.id,
+          method: request.method,
+          url: request.url,
+        },
+        'unhandled application error',
+      );
     }
 
-    app.log.error(error);
-    return reply.status(500).send({ error: 'Internal server error' });
+    return reply.status(statusCode).send({
+      message,
+      error: message,
+      ...(error instanceof ZodError ? { details: error.issues } : {}),
+      ...(statusCode >= 500 ? { requestId: request.id } : {}),
+    });
   });
 
   await registerSecurityPlugins(app);
