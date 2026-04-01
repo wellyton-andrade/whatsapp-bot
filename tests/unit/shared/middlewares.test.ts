@@ -14,8 +14,11 @@ function createReplyMock() {
 describe('Middlewares Unit Tests', () => {
   test('authenticate should set authUser when jwtVerify succeeds', async () => {
     const request = {
+      headers: { authorization: 'Bearer valid-token' },
       jwtVerify: vi.fn().mockResolvedValue(undefined),
       user: { userId: 'u1', tenantId: 't1', role: 'ADMIN' },
+      log: { warn: vi.fn() },
+      id: 'req-auth-success',
     } as any;
     const reply = createReplyMock() as any;
 
@@ -26,9 +29,12 @@ describe('Middlewares Unit Tests', () => {
     expect(reply.status).not.toHaveBeenCalled();
   });
 
-  test('authenticate should return 401 when jwtVerify fails', async () => {
+  test('authenticate should return 401 when Authorization header is missing', async () => {
     const request = {
-      jwtVerify: vi.fn().mockRejectedValue(new Error('token error')),
+      headers: {},
+      jwtVerify: vi.fn(),
+      log: { warn: vi.fn() },
+      id: 'req-auth-missing-header',
     } as any;
     const reply = createReplyMock() as any;
 
@@ -36,6 +42,23 @@ describe('Middlewares Unit Tests', () => {
 
     expect(reply.status).toHaveBeenCalledWith(401);
     expect(reply.send).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    expect(request.jwtVerify).not.toHaveBeenCalled();
+  });
+
+  test('authenticate should return 401 when jwtVerify fails', async () => {
+    const request = {
+      headers: { authorization: 'Bearer invalid-token' },
+      jwtVerify: vi.fn().mockRejectedValue(new Error('token error')),
+      log: { warn: vi.fn() },
+      id: 'req-auth-fail',
+    } as any;
+    const reply = createReplyMock() as any;
+
+    await authenticate(request, reply);
+
+    expect(reply.status).toHaveBeenCalledWith(401);
+    expect(reply.send).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    expect(request.log.warn).toHaveBeenCalledTimes(1);
   });
 
   test('authorizeRoles should return 401 when authUser is missing', async () => {

@@ -14,5 +14,15 @@ export const authPlugin = fp(async (app) => {
       cookieName: 'refreshToken',
       signed: false,
     },
+    sign: {
+      algorithm: 'HS256',
+      iss: env.JWT_ISSUER,
+      aud: env.JWT_AUDIENCE,
+    },
+    verify: {
+      algorithms: ['HS256'],
+      allowedIss: env.JWT_ISSUER,
+      allowedAud: env.JWT_AUDIENCE,
+    },
   });
 });
