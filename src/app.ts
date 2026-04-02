@@ -249,11 +249,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       await app.prisma.$disconnect();
     }
 
-    // 3. Close Redis connection
-    if (app.redis) {
-      app.log.info('closing redis connection...');
-      await app.redis.quit();
-    }
+    // 3. Redis is closed by the redis plugin's onClose hook (avoid double close)
 
     app.log.info('graceful shutdown completed');
   });
