@@ -192,6 +192,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   app.get('/health', async () => ({
     status: 'ok',
+    code: 200,
     queue: app.queueManager ? 'enabled' : 'disabled',
     timestamp: new Date().toISOString(),
   }));
