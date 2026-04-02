@@ -48,9 +48,11 @@ jobs:
           command_timeout: 30m
           script: |
             set -e
+            DEPLOY_SHA="${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}"
             cd ${{ secrets.STAGING_PATH }}
-            git fetch --all
-            git checkout main
-            git reset --hard origin/main
+            git fetch --all --prune
+            git checkout --force "$DEPLOY_SHA"
+            git reset --hard "$DEPLOY_SHA"
+            git rev-parse HEAD
             sudo docker compose up -d --build --remove-orphans
             sudo docker image prune -f
